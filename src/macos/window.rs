@@ -151,16 +151,28 @@ impl<'a> Window<'a> {
 
         let ns_view = unsafe { create_view(&options) };
 
+        let parent_ns_window = if handle.ns_window.is_null() {
+            unsafe {
+                let parent_view = handle.ns_view as id;
+                assert!(parent_view != nil, "failed to obtain ns_view from parent");
+                let window: id = msg_send![parent_view, window];
+                assert!(window != nil, "failed to obtain parent window");
+                Some(window)
+            }
+        } else {
+            Some(handle.ns_window as id)
+        };
+
         let window_inner = WindowInner {
             open: Cell::new(true),
             ns_app: Cell::new(None),
-            ns_window: Cell::new(None),
+            ns_window: Cell::new(parent_ns_window),
             ns_view,
 
             #[cfg(feature = "opengl")]
             gl_context: options
                 .gl_config
-                .map(|gl_config| Self::create_gl_context(None, ns_view, gl_config)),
+                .map(|gl_config| Self::create_gl_context(parent_ns_window, ns_view, gl_config)),
         };
 
         let window_handle = Self::init(window_inner, window_info, build);
