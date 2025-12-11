@@ -48,14 +48,13 @@ impl WindowHandler for ParentWindowHandler {
         if self.damaged {
             buf.fill(0xFFAAAAAA);
             self.damaged = false;
+            buf.present().unwrap();
         }
-        buf.present().unwrap();
     }
 
     fn on_event(&mut self, _window: &mut Window, event: Event) -> EventStatus {
         match event {
             Event::Window(WindowEvent::Resized(info)) => {
-                println!("Parent Resized: {:?}", info);
                 let new_size = info.physical_size();
                 self.current_size = new_size;
 
@@ -99,14 +98,13 @@ impl WindowHandler for ChildWindowHandler {
         if self.damaged {
             buf.fill(0xFFAA0000);
             self.damaged = false;
+            buf.present().unwrap();
         }
-        buf.present().unwrap();
     }
 
     fn on_event(&mut self, _window: &mut Window, event: Event) -> EventStatus {
         match event {
             Event::Window(WindowEvent::Resized(info)) => {
-                println!("Child Resized: {:?}", info);
                 let new_size = info.physical_size();
                 self.current_size = new_size;
 

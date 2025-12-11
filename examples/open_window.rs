@@ -29,8 +29,8 @@ impl WindowHandler for OpenWindowExample {
         if self.damaged {
             buf.fill(0xFFAAAAAA);
             self.damaged = false;
+            buf.present().unwrap();
         }
-        buf.present().unwrap();
 
         while let Ok(message) = self.rx.pop() {
             println!("Message: {:?}", message);

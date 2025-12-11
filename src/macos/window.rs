@@ -222,7 +222,8 @@ impl<'a> Window<'a> {
                 rect,
                 NSWindowStyleMask::NSTitledWindowMask
                     | NSWindowStyleMask::NSClosableWindowMask
-                    | NSWindowStyleMask::NSMiniaturizableWindowMask,
+                    | NSWindowStyleMask::NSMiniaturizableWindowMask
+                    | NSWindowStyleMask::NSResizableWindowMask,
                 NSBackingStoreBuffered,
                 NO,
             );

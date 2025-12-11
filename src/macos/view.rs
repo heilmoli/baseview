@@ -121,6 +121,11 @@ pub(super) unsafe fn create_view(window_options: &WindowOpenOptions) -> id {
 
     view.initWithFrame_(NSRect::new(NSPoint::new(0., 0.), NSSize::new(size.width, size.height)));
 
+      // Enable auto-resizing with superview
+      let NSViewWidthSizable: NSUInteger = 2;
+      let NSViewHeightSizable: NSUInteger = 16;
+      let _: () = msg_send![view, setAutoresizingMask: NSViewWidthSizable | NSViewHeightSizable];
+
     register_notification(view, NSWindowDidBecomeKeyNotification, nil);
     register_notification(view, NSWindowDidResignKeyNotification, nil);
 
@@ -197,6 +202,9 @@ unsafe fn create_view_class() -> &'static Class {
         sel!(prepareForDragOperation:),
         prepare_for_drag_operation as extern "C" fn(&Object, Sel, id) -> BOOL,
     );
+
+    class.add_method(sel!(setFrameSize:), set_frame_size as extern "C" fn(&Object, Sel, NSSize));
+
     class.add_method(
         sel!(performDragOperation:),
         perform_drag_operation as extern "C" fn(&Object, Sel, id) -> BOOL,
@@ -313,7 +321,35 @@ extern "C" fn view_did_change_backing_properties(this: &Object, _: Sel, _: id) {
     }
 }
 
-/// Init/reinit tracking area
+extern "C" fn set_frame_size(this: &Object, _sel: Sel, size: NSSize) {
+    unsafe {
+        // Call the superclass implementation first
+        let superclass: &Class = msg_send![this, superclass];
+        let () = msg_send![super(this, superclass), setFrameSize: size];
+
+        // Now handle the resize event
+        let ns_window: *mut Object = msg_send![this, window];
+
+        let scale_factor: f64 =
+            if ns_window.is_null() { 1.0 } else { NSWindow::backingScaleFactor(ns_window) };
+
+        let state = WindowState::from_view(this);
+
+        let new_window_info =
+            WindowInfo::from_logical_size(Size::new(size.width, size.height), scale_factor);
+
+        let window_info = state.window_info.get();
+
+        // Only send the event when the window's size has actually changed to be in line with the
+        // other platform implementations
+        if new_window_info.physical_size() != window_info.physical_size() {
+            state.window_info.set(new_window_info);
+            state.trigger_deferrable_event(Event::Window(WindowEvent::Resized(new_window_info)));
+        }
+    }
+}
+
+// Init/reinit tracking area
 ///
 /// Info:
 /// https://developer.apple.com/documentation/appkit/nstrackingarea
