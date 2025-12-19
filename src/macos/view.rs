@@ -121,10 +121,15 @@ pub(super) unsafe fn create_view(window_options: &WindowOpenOptions) -> id {
 
     view.initWithFrame_(NSRect::new(NSPoint::new(0., 0.), NSSize::new(size.width, size.height)));
 
-      // Enable auto-resizing with superview
-      let NSViewWidthSizable: NSUInteger = 2;
-      let NSViewHeightSizable: NSUInteger = 16;
-      let _: () = msg_send![view, setAutoresizingMask: NSViewWidthSizable | NSViewHeightSizable];
+    // Enable proportional auto-resizing with superview
+    // All margins and sizes must be flexible for proportional scaling
+    let autoresizing_mask: NSUInteger = 1 | // NSViewMinXMargin
+        2 | // NSViewWidthSizable
+        4 | // NSViewMaxXMargin
+        8 | // NSViewMinYMargin
+        16 | // NSViewHeightSizable
+        32; // NSViewMaxYMargin
+    let _: () = msg_send![view, setAutoresizingMask: autoresizing_mask];
 
     register_notification(view, NSWindowDidBecomeKeyNotification, nil);
     register_notification(view, NSWindowDidResignKeyNotification, nil);

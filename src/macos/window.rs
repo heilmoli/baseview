@@ -136,20 +136,11 @@ impl<'a> Window<'a> {
     {
         let pool = unsafe { NSAutoreleasePool::new(nil) };
 
-        let scaling = match options.scale {
-            WindowScalePolicy::ScaleFactor(scale) => scale,
-            WindowScalePolicy::SystemScaleFactor => 1.0,
-        };
-
-        let window_info = WindowInfo::from_logical_size(options.size, scaling);
-
         let handle = if let RawWindowHandle::AppKit(handle) = parent.raw_window_handle() {
             handle
         } else {
             panic!("Not a macOS window");
         };
-
-        let ns_view = unsafe { create_view(&options) };
 
         let parent_ns_window = if handle.ns_window.is_null() {
             unsafe {
@@ -157,22 +148,31 @@ impl<'a> Window<'a> {
                 assert!(parent_view != nil, "failed to obtain ns_view from parent");
                 let window: id = msg_send![parent_view, window];
                 assert!(window != nil, "failed to obtain parent window");
-                Some(window)
+                window
             }
         } else {
-            Some(handle.ns_window as id)
+            handle.ns_window as id
         };
+
+        let scaling = match options.scale {
+            WindowScalePolicy::ScaleFactor(scale) => scale,
+            WindowScalePolicy::SystemScaleFactor => unsafe { NSWindow::backingScaleFactor(parent_ns_window) }
+        };
+
+        let window_info = WindowInfo::from_logical_size(options.size, scaling);
+
+        let ns_view = unsafe { create_view(&options) };
 
         let window_inner = WindowInner {
             open: Cell::new(true),
             ns_app: Cell::new(None),
-            ns_window: Cell::new(parent_ns_window),
+            ns_window: Cell::new(Some(parent_ns_window)),
             ns_view,
 
             #[cfg(feature = "opengl")]
-            gl_context: options
-                .gl_config
-                .map(|gl_config| Self::create_gl_context(parent_ns_window, ns_view, gl_config)),
+            gl_context: options.gl_config.map(|gl_config| {
+                Self::create_gl_context(Some(parent_ns_window), ns_view, gl_config)
+            }),
         };
 
         let window_handle = Self::init(window_inner, window_info, build);
